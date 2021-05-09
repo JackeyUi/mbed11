@@ -2,8 +2,18 @@
 #include "mbed_rpc.h"
 
 
+#include "stm32l475e_iot01_accelero.h"
+
+void getAcc(Arguments *in, Reply *out);
+
+BufferedSerial pc(USBTX, USBRX);
+RPCFunction rpcAcc(&getAcc, "getAcc");
+
 static BufferedSerial pc(STDIO_UART_TX, STDIO_UART_RX);
 static BufferedSerial xbee(D1, D0);
+
+void ACC(Arguments *in, Reply *out);
+RPCFunction acc(&ACC, "ACC");
 
 EventQueue queue(32 * EVENTS_EVENT_SIZE);
 Thread t;
@@ -20,6 +30,7 @@ void check_addr(char *xbee_reply, char *messenger);
 int main(){
 
    pc.set_baud(9600);
+   BSP_ACCELERO_Init();
 
    char xbee_reply[4];
 
@@ -34,12 +45,12 @@ int main(){
    }
 
    xbee.write("ATMY 0x241\r\n", 12);
-   reply_messange(xbee_reply, "setting MY : <Remote MY>");
+   reply_messange(xbee_reply, "setting MY : 0x241");
    xbee.write("ATDL 0x141\r\n", 12);
-   reply_messange(xbee_reply, "setting DL : <Remote DL>");
+   reply_messange(xbee_reply, "setting DL : 0x141");
 
    xbee.write("ATID 0x1\r\n", 10);
-   reply_messange(xbee_reply, "setting PAN ID : <PAN ID>");
+   reply_messange(xbee_reply, "setting PAN ID : 0x1");
 
    xbee.write("ATWR\r\n", 6);
    reply_messange(xbee_reply, "write config");
@@ -117,4 +128,11 @@ void check_addr(char *xbee_reply, char *messenger){
    xbee_reply[1] = '\0';
    xbee_reply[2] = '\0';
    xbee_reply[3] = '\0';
+}
+void getAcc(Arguments *in, Reply *out) {
+   int16_t pDataXYZ[3] = {0};
+        char buffer[200];
+   BSP_ACCELERO_AccGetXYZ(pDataXYZ);
+   sprintf(buffer, "Accelerometer values: (%d, %d, %d)", pDataXYZ[0], pDataXYZ[1], pDataXYZ[2]);
+   out->putData(buffer);
 }
